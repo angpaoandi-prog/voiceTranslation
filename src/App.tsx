@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Copy, RotateCcw, Languages, Send, Volume2 } from 'lucide-react';
-import axios from 'axios';
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
@@ -180,33 +179,24 @@ function App() {
     setIsTranslating(true);
     setError('');
     try {
-      const options = {
-        method: 'POST',
-        url: 'https://microsoft-translator-text.p.rapidapi.com/translate',
-        params: {
-          'api-version': '3.0',
-          'from': inputLanguage,
-          'to': outputLanguage,
-          'profanityAction': 'NoAction',
-          'textType': 'plain'
-        },
-        headers: {
-          'content-type': 'application/json',
-          'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY,
-          'X-RapidAPI-Host': 'microsoft-translator-text.p.rapidapi.com'
-        },
-        data: [{ Text: originalText }]
-      };
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=${inputLanguage}|${outputLanguage}`);
 
-      const response = await axios.request(options);
-      if (response.data?.[0]?.translations?.[0]?.text) {
-        setTranslatedText(response.data[0].translations[0].text);
-      } else {
-        throw new Error('Translation failed');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (err) {
-      setError('Translation failed. Please try again.');
-      console.error('Translation error:', err);
+      const data = await response.json();
+      if (!data || !data.responseData || !data.responseData.translatedText) {
+        console.error('Translation response:', data);
+        throw new Error('Unexpected response format from translation service');
+      }
+      setTranslatedText(data.responseData.translatedText);
+    } catch (err: any) {
+      setError(`Translation failed: ${err.response?.data?.message || err.message}`);
+      console.error('Translation error:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        error: err
+      });
     } finally {
       setIsTranslating(false);
     }
@@ -217,33 +207,24 @@ function App() {
     setIsTranslatingReply(true);
     setError('');
     try {
-      const options = {
-        method: 'POST',
-        url: 'https://microsoft-translator-text.p.rapidapi.com/translate',
-        params: {
-          'api-version': '3.0',
-          'from': outputLanguage,
-          'to': inputLanguage,
-          'profanityAction': 'NoAction',
-          'textType': 'plain'
-        },
-        headers: {
-          'content-type': 'application/json',
-          'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY,
-          'X-RapidAPI-Host': 'microsoft-translator-text.p.rapidapi.com'
-        },
-        data: [{ Text: agentReply }]
-      };
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(agentReply)}&langpair=${outputLanguage}|${inputLanguage}`);
 
-      const response = await axios.request(options);
-      if (response.data?.[0]?.translations?.[0]?.text) {
-        setAgentReplyTranslated(response.data[0].translations[0].text);
-      } else {
-        throw new Error('Translation failed');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (err) {
-      setError('Agent reply translation failed. Please try again.');
-      console.error('Translation error:', err);
+      const data = await response.json();
+      if (!data || !data.responseData || !data.responseData.translatedText) {
+        console.error('Translation response:', data);
+        throw new Error('Unexpected response format from translation service');
+      }
+      setAgentReplyTranslated(data.responseData.translatedText);
+    } catch (err: any) {
+      setError(`Agent reply translation failed: ${err.response?.data?.message || err.message}`);
+      console.error('Translation error:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        error: err
+      });
     } finally {
       setIsTranslatingReply(false);
     }
